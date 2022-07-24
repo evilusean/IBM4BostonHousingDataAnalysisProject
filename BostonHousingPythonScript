@@ -1,0 +1,177 @@
+#import libraries
+import scipy.stats
+import pandas as pd
+import seaborn as sns
+import statsmodels.api as sm
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+
+#load dataset from coursera
+boston_url = 'https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBMDeveloperSkillsNetwork-ST0151EN-SkillsNetwork/labs/boston_housing.csv'
+boston_df=pd.read_csv(boston_url)
+boston_df.head()
+
+#list the columns of the dataset
+boston_df.columns
+
+"""
+The following describes the dataset variables:
+
+·      CRIM - per capita crime rate by town
+
+·      ZN - proportion of residential land zoned for lots over 25,000 sq.ft.
+
+·      INDUS - proportion of non-retail business acres per town.
+
+·      CHAS - Charles River dummy variable (1 if tract bounds river; 0 otherwise)
+
+·      NOX - nitric oxides concentration (parts per 10 million)
+
+·      RM - average number of rooms per dwelling
+
+·      AGE - proportion of owner-occupied units built prior to 1940
+
+·      DIS - weighted distances to five Boston employment centres
+
+·      RAD - index of accessibility to radial highways
+
+·      TAX - full-value property-tax rate per $10,000
+
+·      PTRATIO - pupil-teacher ratio by town
+
+·      LSTAT - % lower status of the population
+
+·      MEDV - Median value of owner-occupied homes in $1000's
+"""
+#Get info about dataset
+boston_df.info()
+
+#get summary statistics of dataset
+boston_df.describe(include = "all")
+
+
+#Cursory glance at data using histograms
+boston_df.hist(['CRIM', 'ZN', 'INDUS', 'NOX', 'RM', 'AGE', 'DIS', 'TAX',
+                 'PTRATIO', 'LSTAT'], figsize=(18,10))
+
+
+#set X, Y axis for linear regression model
+X = boston_df[['INDUS']]
+Y = boston_df['NOX']
+
+lm = LinearRegression()
+
+lm.fit(X, Y)
+
+print(lm.intercept_)
+print(lm.coef_)
+
+Y_hat = lm.predict(X)
+#check model
+Y_hat
+#create plot using linear model
+sns.regplot(x = "INDUS", y = "NOX", data = boston_df)
+plt.ylim(0,)
+
+
+#create a Boxplot for the "Median value of owner-occupied homes in $1000's" column.
+box = sns.boxplot(y = 'MEDV', data = boston_df)
+box.set(ylabel = "Median value of owner-occupied homes in $1000's"
+        , xlabel = "Boxplot"
+        , title = "Boxplot for Median value of owner-occupied homes")
+
+#Provide a  bar plot for the Charles river variable
+distplot = sns.distplot(boston_df['CHAS'])
+distplot.set(xlabel = "1 for Charles river variable, otherwise 0"
+             ,ylabel = "Frequency of Charles river variable"
+            , title = "Histogram for houses on Charles river")
+#the histogram shows the frequency of the charles river variable of 1 or 0
+
+
+#create 3 housing age groups
+boston_df.loc[boston_df['AGE'] <= 30, 'Age_Group'] = "35 and younger"
+boston_df.loc[(boston_df['AGE'] > 30) & (boston_df['AGE'] < 70), 'Age_Group'] = "Between 35 and 70"
+boston_df.loc[(boston_df['AGE'] >= 70), 'Age_Group'] = "70 and older"
+#creates a boxplot for each house age bracket
+boxplot = sns.boxplot(x = 'Age_Group', y = 'MEDV', data = boston_df)
+boxplot.set(xlabel = "Home Age"
+           , ylabel = "Median value of owner-occupied homes in $1000's"
+           , title = "Boxplot for the Median Value vs the Age of House")
+
+
+#Creates a ScatterPlot for correlation between the INDUS and NOX column.
+scatter = sns.scatterplot(x = 'INDUS', y = 'NOX', data = boston_df)
+scatter.set(ylabel = "Nitric Oxides concentration (parts per 10 million)"
+            , xlabel = "Proportion of non-retail business acres per town."
+           , title = "Scatter Plot Comparison of Nitric Oxides and Industrial Location")
+
+#Create a Histogram for the Pupil to Teacher ratio
+histplot = sns.distplot(boston_df['PTRATIO'])
+histplot.set(xlabel = "Pupil-Teacher ratio by town"
+             , ylabel = "Frequency of Pupil-Teacher ratio by Zone"
+            , title = "Histogram for Pupil to Teacher ratio")
+
+#Is there a significant difference in median value of houses bounded by the Charles river or not? (T-test for independent samples)
+
+#T-test to see if there is a correlation between house value and charles river location
+scipy.stats.ttest_ind(boston_df['MEDV'], boston_df['CHAS'])
+#the p-value is again greater than our alpha value and we again reject our null hypthesis to confirm there is a statistical signifigance for median house value along the charles river
+
+#State the hypothesis:
+#H0:µ1=µ2  there is no difference in median value of houses on the Charles river
+#H1:µ1≠µ2  there is a difference in median value of houses on the Charles river
+#levenes test to check for statistical signifigance
+scipy.stats.levene(boston_df['MEDV'], boston_df['CHAS'], center = 'mean')
+#LeveneResult(statistic=532.6811164157676, pvalue=5.40253511973145e-95)
+#since the p-value is over 0.05 we can infer that there is statistical signifigance and reject our null hypothesis
+
+
+#Is there a difference in Median values of houses (MEDV) for each proportion of owner occupied units built prior to 1940 (AGE)? (ANOVA)
+boston_df.loc[boston_df['AGE'] <= 30, 'Age_Group'] = "35 and younger"
+boston_df.loc[(boston_df['AGE'] > 30) & (boston_df['AGE'] < 70), 'Age_Group'] = "Between 35 and 70"
+boston_df.loc[(boston_df['AGE'] >= 70), 'Age_Group'] = "70 and older"
+#State the hypothesis
+#H0:µ1=µ2=µ3  (the three population means are equal)
+#H1:  At least one of the means differ
+scipy.stats.levene(boston_df[boston_df['Age_Group'] == "35 and younger"]['MEDV'],
+                   boston_df[boston_df['Age_Group'] == "Between 35 and 70"]['MEDV'], 
+                   boston_df[boston_df['Age_Group'] == "70 and older"]['MEDV'], 
+                   center='mean')
+#create variables for each sample group
+thirtyfive_lower = boston_df[boston_df['Age_Group'] == "35 and younger"]['MEDV']
+thirtyfive_seventy = boston_df[boston_df['Age_Group'] == "Between 35 and 70"]['MEDV']
+seventy_older = boston_df[boston_df['Age_Group'] == "70 and older"]['MEDV']
+#ANOVA test
+scipy.stats.f_oneway(thirtyfive_lower, thirtyfive_seventy, seventy_older)
+#Since the p-value is greater than alpha value 0.05, we can reject the null hypothesis as there is enough proof that there is a statistical signifigance in Median values of homes(MEDV) for occupied units built prior to 1940(AGE).
+
+
+
+#Can we conclude that there is no relationship between Nitric oxide concentrations and proportion of non-retail business acres per town? (Pearson Correlation)
+#State the hypothesis:
+#H0:  There is no relationship between Nitric oxide concentrations and proportion of non-retail business acres per town.
+#H1:  There is a relationship between Nitric oxide concentrations and proportion of non-retail business acres per town.
+scipy.stats.pearsonr(boston_df['INDUS'], boston_df['NOX'])
+#CONCLUSION: Since the p-value is greater than 0.05, we reject the Null hypothesis and can conclude that there exists a relationship between Nitric oxide concentrations of non-retail business acres per zone.
+
+
+
+#What is the impact of an additional weighted distance  to the five Boston employment centres on the median value of owner occupied homes? (Regression analysis)
+#state the hypothesis:
+#H0:β1  = 0 (There is no impact of an additional weighted distance to the five Boston employment centres on the median value of owner occupied homes)
+#H1:β1  is not equal to 0 (There is an impact of an additional weighted distance to the five Boston employment centres on the median value of owner occupied homes)
+#Set X variable
+X = boston_df['DIS']
+
+#set dependant variable
+y = boston_df['MEDV']
+
+X = sm.add_constant(X) 
+
+model = sm.OLS(y, X).fit()
+predictions = model.predict(X)
+
+#show summary of model
+model.summary()
+
+#CONCLUSION: Like the t-test, the p-value is less than the alpha (α) level = 0.05, so we reject the null hypothesis as there is evidence that there is impact of an additional weighted distance to the five Boston employment centres on the median value of owner occupied homes. The coefficient is positive 0.0572 which also signifies that the impact increases by 0.0572 when there is an additional weighted distance to the five Boston employment centres .
